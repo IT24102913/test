@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import api from '../../api/axiosConfig';
 import { useAuth } from '../../context/AuthContext';
+import CustomAlert from '../../components/common/CustomAlert';
+import ReportModal from '../reports/ReportModal';
 
 export default function CommentSection({ postId }) {
   const { user } = useAuth();
@@ -9,6 +11,11 @@ export default function CommentSection({ postId }) {
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
   
   // Edit State
   const [editingCommentId, setEditingCommentId] = useState(null);
@@ -17,6 +24,10 @@ export default function CommentSection({ postId }) {
   // Reply State
   const [replyingToId, setReplyingToId] = useState(null);
   const [replyContent, setReplyContent] = useState('');
+  
+  // Report State
+  const [isReportModalVisible, setReportModalVisible] = useState(false);
+  const [reportingCommentId, setReportingCommentId] = useState(null);
 
   useEffect(() => {
     fetchComments();
@@ -27,7 +38,7 @@ export default function CommentSection({ postId }) {
       const res = await api.get(`/comments/${postId}`);
       setComments(res.data);
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     } finally {
       setLoading(false);
     }
@@ -38,7 +49,7 @@ export default function CommentSection({ postId }) {
     const parentId = isReply ? replyingToId : null;
 
     if (contentToSubmit.trim().length < 2) {
-      Alert.alert('Validation', 'Comment must be at least 2 characters.'); return;
+      showAlert('Validation', 'Comment must be at least 2 characters.', 'ERROR'); return;
     }
     setSubmitting(true);
     try {
@@ -55,30 +66,19 @@ export default function CommentSection({ postId }) {
       }
       fetchComments();
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.error || err.message);
+      showAlert('Error', err.response?.data?.error || err.message, 'ERROR');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteComment = (commentId) => {
-    Alert.alert(
-      'Delete Comment',
-      'Are you sure you want to delete this comment?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-             try {
-               await api.delete(`/comments/${commentId}`);
-               fetchComments();
-             } catch (err) { Alert.alert('Error', err.message); }
-          }
-        }
-      ]
-    );
+    showAlert('Delete Comment', 'Are you sure you want to delete this comment?', 'DELETE', async () => {
+      try {
+        await api.delete(`/comments/${commentId}`);
+        fetchComments();
+      } catch (err) { showAlert('Error', err.message, 'ERROR'); }
+    });
   };
 
   const handleStartEdit = (comment) => {
@@ -88,7 +88,7 @@ export default function CommentSection({ postId }) {
 
   const handleSaveEdit = async () => {
     if (editingContent.trim().length < 2) {
-      Alert.alert('Validation', 'Comment must be at least 2 characters.'); return;
+      showAlert('Validation', 'Comment must be at least 2 characters.', 'ERROR'); return;
     }
     try {
       await api.put(`/comments/${editingCommentId}`, { content: editingContent.trim() });
@@ -96,18 +96,13 @@ export default function CommentSection({ postId }) {
       setEditingContent('');
       fetchComments();
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     }
   };
 
-  const handleReport = async (commentId) => {
-    Alert.prompt('Report Comment', 'Briefly describe your reason:', async (reason) => {
-      if (!reason?.trim()) return;
-      try {
-        await api.post('/reports', { commentId, reason });
-        Alert.alert('Reported', 'Comment has been reported for review.');
-      } catch (err) { Alert.alert('Error', err.message); }
-    });
+  const handleReport = (commentId) => {
+    setReportingCommentId(commentId);
+    setReportModalVisible(true);
   };
 
   const renderComment = (c, isReplyNode = false) => {
@@ -239,6 +234,29 @@ export default function CommentSection({ postId }) {
       <TouchableOpacity style={styles.submitBtn} onPress={() => handleAddComment(false)} disabled={submitting}>
         {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Post Comment</Text>}
       </TouchableOpacity>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+        onCancel={
+          ['DELETE', 'INFO'].includes(alertConfig.type) && 
+          (alertConfig.title.includes('Are you sure') || alertConfig.title.includes('Delete') || alertConfig.title.includes('Report'))
+          ? () => setAlertConfig({ ...alertConfig, visible: false }) : null
+        }
+      />
+
+      <ReportModal
+        visible={isReportModalVisible}
+        commentId={reportingCommentId}
+        onClose={() => setReportModalVisible(false)}
+        onSuccess={() => showAlert('Reported', 'Comment has been reported for review.', 'SUCCESS')}
+      />
     </View>
   );
 }

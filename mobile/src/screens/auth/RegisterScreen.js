@@ -4,23 +4,29 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import api from '../../api/axiosConfig';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function RegisterScreen({ navigation }) {
   const [form, setForm]     = useState({ username: '', email: '', fullName: '', password: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   const set = (key) => (val) => setForm((prev) => ({ ...prev, [key]: val }));
 
   const validate = () => {
     if (!form.username || !form.email || !form.password || !form.confirmPassword) {
-      setError('All fields are required.'); return false;
+      showAlert('Required', 'All fields are required.', 'ERROR'); return false;
     }
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.'); return false;
+      showAlert('Mismatch', 'Passwords do not match.', 'ERROR'); return false;
     }
     if (form.password.length < 8) {
-      setError('Password must be at least 8 characters.'); return false;
+      showAlert('Password too short', 'Password must be at least 8 characters.', 'ERROR'); return false;
     }
     const pwRegex = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=]).*$/;
     if (!pwRegex.test(form.password)) {
@@ -40,8 +46,9 @@ export default function RegisterScreen({ navigation }) {
         fullName: form.fullName.trim(),
         password: form.password,
       });
-      navigation.navigate('Login');
+      showAlert('Account Created!', 'Please login with your credentials.', 'SUCCESS', () => navigation.navigate('Login'));
     } catch (err) {
+      showAlert('Registration Failed', err.message, 'ERROR');
       setError(err.message);
     } finally {
       setLoading(false);
@@ -93,6 +100,16 @@ export default function RegisterScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

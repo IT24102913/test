@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axiosConfig';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
@@ -12,6 +13,11 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO' });
+
+  const showAlert = (title, message, type = 'INFO') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
 
   const handleLogin = async () => {
     setError('');
@@ -25,6 +31,7 @@ export default function LoginScreen({ navigation }) {
       const res = await api.post('/auth/login', { username: username.trim(), password });
       await login(res.data.token, res.data.user);
     } catch (err) {
+      showAlert('Login Failed', err.message, 'ERROR');
       setError(err.message);
     } finally {
       setLoading(false);
@@ -80,6 +87,13 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => setAlertConfig({ ...alertConfig, visible: false })}
+      />
     </KeyboardAvoidingView>
   );
 }

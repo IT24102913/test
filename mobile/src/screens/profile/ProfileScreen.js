@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axiosConfig';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function ProfileScreen() {
   const { user, logout, updateUser } = useAuth();
@@ -12,11 +13,16 @@ export default function ProfileScreen() {
   const [editFullName, setEditFullName] = useState(user?.fullName || '');
   const [editPassword, setEditPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   const handleSaveProfile = async () => {
     try {
       if (!editUsername.trim() || !editEmail.trim()) {
-        return Alert.alert('Error', 'Username and email are required.');
+        return showAlert('Error', 'Username and email are required.', 'ERROR');
       }
       setSaving(true);
       
@@ -31,21 +37,18 @@ export default function ProfileScreen() {
       
       const res = await api.put('/users/me', payload);
       updateUser(res.data.user);
-      Alert.alert('Success', 'Profile updated successfully.');
+      showAlert('Success', 'Profile updated successfully.', 'SUCCESS');
       setEditModalVisible(false);
       setEditPassword('');
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.error || err.message);
+      showAlert('Error', err.response?.data?.error || err.message, 'ERROR');
     } finally {
       setSaving(false);
     }
   };
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', onPress: logout, style: 'destructive' },
-    ]);
+    showAlert('Logout', 'Are you sure you want to log out?', 'INFO', logout);
   };
 
   if (!user) return null;
@@ -150,6 +153,21 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+        onCancel={
+          (alertConfig.type === 'INFO' && alertConfig.title === 'Logout')
+          ? () => setAlertConfig({ ...alertConfig, visible: false }) : null
+        }
+      />
     </>
   );
 }

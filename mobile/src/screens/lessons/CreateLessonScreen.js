@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import api from '../../api/axiosConfig';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function CreateLessonScreen({ route, navigation }) {
   const { courseId, lessonId, edit } = route.params || {};
@@ -12,6 +13,12 @@ export default function CreateLessonScreen({ route, navigation }) {
   const [pdfFile, setPdfFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(!!edit);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
+
   const set = (k) => (v) => setForm((p) => ({ ...p, [k]: v }));
 
   // Fetch existing lesson data when editing
@@ -35,7 +42,7 @@ export default function CreateLessonScreen({ route, navigation }) {
             setPdfFile({ name: lesson.materialName, existing: true });
           }
         } catch (err) {
-          Alert.alert('Error', 'Failed to load lesson data.');
+          showAlert('Error', 'Failed to load lesson data.', 'ERROR');
         } finally {
           setFetching(false);
         }
@@ -99,7 +106,7 @@ export default function CreateLessonScreen({ route, navigation }) {
 
   const handleSave = async () => {
     if (!form.title.trim() || !form.content.trim()) {
-      Alert.alert('Validation', 'Title and content are required.'); return;
+      showAlert('Validation', 'Title and content are required.', 'ERROR'); return;
     }
     setLoading(true);
     try {
@@ -134,10 +141,9 @@ export default function CreateLessonScreen({ route, navigation }) {
         });
       }
 
-      Alert.alert('Success!', `Lesson ${edit ? 'updated' : 'created'} successfully.`);
-      navigation.goBack();
+      showAlert('Success!', `Lesson ${edit ? 'updated' : 'created'} successfully.`, 'SUCCESS', () => navigation.goBack());
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.error || err.message);
+      showAlert('Error', err.response?.data?.error || err.message, 'ERROR');
     } finally {
       setLoading(false);
     }
@@ -212,6 +218,17 @@ export default function CreateLessonScreen({ route, navigation }) {
       <TouchableOpacity style={styles.btn} onPress={handleSave} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{edit ? 'Save Changes' : 'Create Lesson'}</Text>}
       </TouchableOpacity>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+      />
     </ScrollView>
   );
 }

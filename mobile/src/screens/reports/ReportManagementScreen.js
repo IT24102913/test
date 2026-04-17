@@ -5,11 +5,17 @@ import {
   ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import api from '../../api/axiosConfig';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function ReportManagementScreen() {
   const [reports,    setReports]    = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   const fetchReports = useCallback(async () => {
     try {
@@ -31,25 +37,23 @@ export default function ReportManagementScreen() {
 
   const handleResolve = (reportId, action) => {
     const actionText = action === 'ACCEPT' ? 'accept (delete the comment)' : 'reject';
-    Alert.alert(
+    showAlert(
       `${action === 'ACCEPT' ? 'Accept' : 'Reject'} Report`,
       `Are you sure you want to ${actionText} this report?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: action === 'ACCEPT' ? 'Accept' : 'Reject',
-          style: action === 'ACCEPT' ? 'destructive' : 'default',
-          onPress: async () => {
-            try {
-              await api.put(`/reports/${reportId}/resolve`, { action });
-              Alert.alert('Done', action === 'ACCEPT' ? 'Report accepted and comment deleted.' : 'Report rejected.');
-              fetchReports();
-            } catch (err) {
-              Alert.alert('Error', err.message);
-            }
-          }
+      action === 'ACCEPT' ? 'DELETE' : 'INFO',
+      async () => {
+        try {
+          await api.put(`/reports/${reportId}/resolve`, { action });
+          showAlert(
+            'Done', 
+            action === 'ACCEPT' ? 'Report accepted and comment deleted.' : 'Report rejected.',
+            'SUCCESS'
+          );
+          fetchReports();
+        } catch (err) {
+          showAlert('Error', err.message, 'ERROR');
         }
-      ]
+      }
     );
   };
 
@@ -120,6 +124,21 @@ export default function ReportManagementScreen() {
           </View>
         }
         contentContainerStyle={{ paddingBottom: 20 }}
+      />
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+        onCancel={
+          ['DELETE', 'INFO'].includes(alertConfig.type) && 
+          alertConfig.title.includes('Are you sure') || alertConfig.title.includes('Report') 
+          ? () => setAlertConfig({ ...alertConfig, visible: false }) : null
+        }
       />
     </View>
   );

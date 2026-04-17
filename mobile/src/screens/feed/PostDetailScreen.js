@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
 import api from '../../api/axiosConfig';
+import CustomAlert from '../../components/common/CustomAlert';
 import CommentSection from './CommentSection';
 
 export default function PostDetailScreen({ route }) {
   const { postId } = route.params;
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   useEffect(() => {
     fetchPost();
@@ -17,7 +23,7 @@ export default function PostDetailScreen({ route }) {
       const res = await api.get(`/posts/${postId}`);
       setPost(res.data);
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     } finally {
       setLoading(false);
     }
@@ -48,6 +54,16 @@ export default function PostDetailScreen({ route }) {
       {/* Extracted Comments Component */}
       <CommentSection postId={postId} />
       
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+      />
     </ScrollView>
   );
 }

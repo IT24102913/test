@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import api from '../../api/axiosConfig';
 import { useAuth } from '../../context/AuthContext';
+import CustomAlert from '../../components/common/CustomAlert';
 
 const REACTIONS = ['👍', '❤️', '🔥', '🎉', '😮'];
 const ACHIEVEMENT_TYPES = ['Course Completion', 'Quiz Score', 'Milestone', 'General'];
@@ -15,6 +16,11 @@ export default function FeedScreen({ navigation }) {
   const [posts,      setPosts]      = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -27,7 +33,7 @@ export default function FeedScreen({ navigation }) {
       );
       setPosts(postsWithComments);
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -44,53 +50,41 @@ export default function FeedScreen({ navigation }) {
     try {
       await api.post(`/posts/${postId}/react`, { type });
       fetchPosts();
-    } catch (err) { Alert.alert('Error', err.message); }
+    } catch (err) { showAlert('Error', err.message, 'ERROR'); }
   };
 
   const handleApprove = async (postId) => {
     try {
       await api.post(`/posts/${postId}/approve`);
       fetchPosts();
-    } catch (err) { Alert.alert('Error', err.message); }
+    } catch (err) { showAlert('Error', err.message, 'ERROR'); }
   };
 
   const handleDecline = (postId) => {
-    Alert.alert(
+    showAlert(
       'Decline Post',
       'Are you sure you want to decline this post?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Decline',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.post(`/posts/${postId}/decline`);
-              fetchPosts();
-            } catch (err) { Alert.alert('Error', err.message); }
-          }
-        }
-      ]
+      'INFO',
+      async () => {
+        try {
+          await api.post(`/posts/${postId}/decline`);
+          fetchPosts();
+        } catch (err) { showAlert('Error', err.message, 'ERROR'); }
+      }
     );
   };
 
   const handleDeletePost = (postId) => {
-    Alert.alert(
+    showAlert(
       'Delete Post',
       'Are you sure you want to delete this post?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/posts/${postId}`);
-              fetchPosts();
-            } catch (err) { Alert.alert('Error', err.message); }
-          }
-        }
-      ]
+      'DELETE',
+      async () => {
+        try {
+          await api.delete(`/posts/${postId}`);
+          fetchPosts();
+        } catch (err) { showAlert('Error', err.message, 'ERROR'); }
+      }
     );
   };
 
@@ -202,6 +196,21 @@ export default function FeedScreen({ navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPosts(); }} tintColor="#6C63FF" />}
         ListEmptyComponent={<Text style={styles.empty}>No posts yet. Be the first!</Text>}
         contentContainerStyle={{ paddingBottom: 20 }}
+      />
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+        onCancel={
+          ['DELETE', 'INFO'].includes(alertConfig.type) && 
+          (alertConfig.title.includes('Are you sure') || alertConfig.title.includes('Decline')) 
+          ? () => setAlertConfig({ ...alertConfig, visible: false }) : null
+        }
       />
     </View>
   );

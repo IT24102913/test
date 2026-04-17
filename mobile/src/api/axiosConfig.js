@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // ⚠️  Change this to your deployed Render URL when deploying!
 // For local development use: 'http://10.0.2.2:5000/api'  (Android emulator)
 // For real device on same WiFi: 'http://YOUR_LOCAL_IP:5000/api'
-const BASE_URL = 'http://192.168.1.7:5000/api';
+const BASE_URL = 'http://192.168.1.3:5000/api';
 
 const api = axios.create({
   baseURL: BASE_URL,

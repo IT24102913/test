@@ -4,6 +4,7 @@ import {
   View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, RefreshControl, TextInput, TouchableOpacity
 } from 'react-native';
 import api from '../../api/axiosConfig';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function MyReportsScreen() {
   const [reports,    setReports]    = useState([]);
@@ -11,13 +12,18 @@ export default function MyReportsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [editingReportId, setEditingReportId] = useState(null);
   const [editingReason, setEditingReason] = useState('');
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   const fetchReports = useCallback(async () => {
     try {
       const res = await api.get('/reports/my');
       setReports(res.data);
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -31,25 +37,19 @@ export default function MyReportsScreen() {
   );
 
   const handleDelete = (reportId) => {
-    Alert.alert(
+    showAlert(
       'Delete Report',
       'Are you sure you want to delete your report?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/reports/${reportId}`);
-              Alert.alert('Success', 'Report deleted successfully');
-              fetchReports();
-            } catch (err) {
-              Alert.alert('Error', err.message);
-            }
-          }
+      'DELETE',
+      async () => {
+        try {
+          await api.delete(`/reports/${reportId}`);
+          showAlert('Success', 'Report deleted successfully', 'SUCCESS');
+          fetchReports();
+        } catch (err) {
+          showAlert('Error', err.message, 'ERROR');
         }
-      ]
+      }
     );
   };
 
@@ -60,13 +60,13 @@ export default function MyReportsScreen() {
 
   const saveEdit = async (reportId) => {
     try {
-      if (!editingReason.trim()) return Alert.alert('Error', 'Reason cannot be empty');
+      if (!editingReason.trim()) return showAlert('Error', 'Reason cannot be empty', 'ERROR');
       await api.put(`/reports/${reportId}`, { reason: editingReason });
       setEditingReportId(null);
       setEditingReason('');
       fetchReports();
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     }
   };
 
@@ -173,6 +173,17 @@ export default function MyReportsScreen() {
           </View>
         }
         contentContainerStyle={{ paddingBottom: 20 }}
+      />
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+        onCancel={alertConfig.type === 'DELETE' ? () => setAlertConfig({ ...alertConfig, visible: false }) : null}
       />
     </View>
   );

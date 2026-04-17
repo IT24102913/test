@@ -2,10 +2,16 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../../api/axiosConfig';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function AdminDashboardScreen({ navigation }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   const fetchUsers = async () => {
     try {
@@ -13,7 +19,7 @@ export default function AdminDashboardScreen({ navigation }) {
       const res = await api.get('/users');
       setUsers(res.data);
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     } finally {
       setLoading(false);
     }
@@ -26,25 +32,19 @@ export default function AdminDashboardScreen({ navigation }) {
   );
 
   const handleDeleteUser = (userId) => {
-    Alert.alert(
+    showAlert(
       'Confirm Delete',
       'Are you sure you want to delete this user?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/users/${userId}`);
-              Alert.alert('Success', 'User deleted successfully');
-              fetchUsers();
-            } catch (err) {
-              Alert.alert('Error', err.message);
-            }
-          }
+      'DELETE',
+      async () => {
+        try {
+          await api.delete(`/users/${userId}`);
+          showAlert('Success', 'User deleted successfully', 'SUCCESS');
+          fetchUsers();
+        } catch (err) {
+          showAlert('Error', err.message, 'ERROR');
         }
-      ]
+      }
     );
   };
 
@@ -94,6 +94,21 @@ export default function AdminDashboardScreen({ navigation }) {
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+        onCancel={
+          alertConfig.type === 'DELETE' || (alertConfig.type === 'INFO' && alertConfig.title.includes('Confirm'))
+          ? () => setAlertConfig({ ...alertConfig, visible: false }) : null
+        }
+      />
     </View>
   );
 }

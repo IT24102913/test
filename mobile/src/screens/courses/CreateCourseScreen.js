@@ -4,30 +4,35 @@ import {
   ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
 import api from '../../api/axiosConfig';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function CreateCourseScreen({ route, navigation }) {
   const { courseId, edit } = route.params || {};
   const [form, setForm] = useState({ title: '', description: '', level: 'BEGINNER', minimumPointsRequired: '0' });
   const [loading, setLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
   const set = (k) => (v) => setForm((p) => ({ ...p, [k]: v }));
 
   const handleSave = async () => {
     if (!form.title.trim() || !form.description.trim()) {
-      Alert.alert('Validation', 'Title and description are required.'); return;
+      showAlert('Validation', 'Title and description are required.', 'ERROR'); return;
     }
     setLoading(true);
     try {
       const payload = { ...form, minimumPointsRequired: parseInt(form.minimumPointsRequired) || 0 };
       if (edit && courseId) {
         await api.put(`/courses/${courseId}`, payload);
-        Alert.alert('Success', 'Course updated!');
+        showAlert('Success', 'Course updated!', 'SUCCESS', () => navigation.goBack());
       } else {
         await api.post('/courses', payload);
-        Alert.alert('Success', 'Course created!');
+        showAlert('Success', 'Course created!', 'SUCCESS', () => navigation.goBack());
       }
-      navigation.goBack();
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     } finally {
       setLoading(false);
     }
@@ -64,6 +69,17 @@ export default function CreateCourseScreen({ route, navigation }) {
       <TouchableOpacity style={styles.btn} onPress={handleSave} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{edit ? 'Save Changes' : 'Create Course'}</Text>}
       </TouchableOpacity>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+      />
     </ScrollView>
   );
 }

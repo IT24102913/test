@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import api from '../../api/axiosConfig';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function UserFormScreen({ route, navigation }) {
   const editingUser = route.params?.user;
@@ -21,6 +21,11 @@ export default function UserFormScreen({ route, navigation }) {
     role: editingUser?.role || 'USER'
   });
   const [loading, setLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   const roles = ['USER', 'STAFF', 'ADMIN'];
 
@@ -31,24 +36,25 @@ export default function UserFormScreen({ route, navigation }) {
 
   const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.username || !form.email) {
-      Alert.alert('Error', 'First Name, Last Name, Username, and Email are required.');
+      showAlert('Error', 'First Name, Last Name, Username, and Email are required.', 'ERROR');
       return;
     }
 
     if (!isEditing && !form.password) {
-      Alert.alert('Error', 'Password is required for new users.');
+      showAlert('Error', 'Password is required for new users.', 'ERROR');
       return;
     }
 
     if (form.password) {
       if (form.password !== form.confirmPassword) {
-        Alert.alert('Error', 'Passwords do not match.');
+        showAlert('Error', 'Passwords do not match.', 'ERROR');
         return;
       }
       if (!validatePassword(form.password)) {
-        Alert.alert(
+        showAlert(
           'Weak Password', 
-          'Password must be at least 8 characters and include a digit, lowercase, uppercase, and special character.'
+          'Password must be at least 8 characters and include a digit, lowercase, uppercase, and special character.',
+          'ERROR'
         );
         return;
       }
@@ -70,14 +76,13 @@ export default function UserFormScreen({ route, navigation }) {
       
       if (isEditing) {
         await api.put(`/users/${editingUser._id}`, payload);
-        Alert.alert('Success', 'User updated successfully');
+        showAlert('Success', 'User updated successfully', 'SUCCESS', () => navigation.goBack());
       } else {
         await api.post('/users', payload);
-        Alert.alert('Success', 'User created successfully');
+        showAlert('Success', 'User created successfully', 'SUCCESS', () => navigation.goBack());
       }
-      navigation.goBack();
     } catch (err) {
-       Alert.alert('Error', err.message);
+       showAlert('Error', err.message, 'ERROR');
     } finally {
       setLoading(false);
     }
@@ -179,6 +184,17 @@ export default function UserFormScreen({ route, navigation }) {
           )}
         </TouchableOpacity>
       </View>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+      />
     </ScrollView>
   );
 }

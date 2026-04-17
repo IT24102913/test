@@ -5,11 +5,17 @@ import {
   ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import api from '../../api/axiosConfig';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function FeedbackManagementScreen() {
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   const fetchFeedbacks = useCallback(async () => {
     try {
@@ -31,30 +37,24 @@ export default function FeedbackManagementScreen() {
 
   const handleAction = (feedbackId, action) => {
     const actionText = action === 'APPROVE' ? 'approve' : 'delete';
-    Alert.alert(
+    showAlert(
       `${action === 'APPROVE' ? 'Approve' : 'Delete'} Feedback`,
       `Are you sure you want to ${actionText} this feedback?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: action === 'APPROVE' ? 'Approve' : 'Delete',
-          style: action === 'APPROVE' ? 'default' : 'destructive',
-          onPress: async () => {
-            try {
-              if (action === 'APPROVE') {
-                await api.post(`/feedback/${feedbackId}/approve`);
-                Alert.alert('Done', 'Feedback approved.');
-              } else {
-                await api.delete(`/feedback/${feedbackId}`);
-                Alert.alert('Done', 'Feedback deleted.');
-              }
-              fetchFeedbacks();
-            } catch (err) {
-              Alert.alert('Error', err.message);
-            }
+      action === 'APPROVE' ? 'INFO' : 'DELETE',
+      async () => {
+        try {
+          if (action === 'APPROVE') {
+            await api.post(`/feedback/${feedbackId}/approve`);
+            showAlert('Done', 'Feedback approved.', 'SUCCESS');
+          } else {
+            await api.delete(`/feedback/${feedbackId}`);
+            showAlert('Done', 'Feedback deleted.', 'SUCCESS');
           }
+          fetchFeedbacks();
+        } catch (err) {
+          showAlert('Error', err.message, 'ERROR');
         }
-      ]
+      }
     );
   };
 
@@ -129,6 +129,21 @@ export default function FeedbackManagementScreen() {
           </View>
         }
         contentContainerStyle={{ paddingBottom: 20 }}
+      />
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+        onCancel={
+          ['DELETE', 'INFO'].includes(alertConfig.type) && 
+          (alertConfig.title.includes('Are you sure') || alertConfig.title.includes('Feedback')) 
+          ? () => setAlertConfig({ ...alertConfig, visible: false }) : null
+        }
       />
     </View>
   );

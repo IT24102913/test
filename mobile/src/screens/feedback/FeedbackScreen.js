@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import api from '../../api/axiosConfig';
 import { useAuth } from '../../context/AuthContext';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function FeedbackScreen({ route }) {
   const { courseId } = route.params;
@@ -15,6 +16,11 @@ export default function FeedbackScreen({ route }) {
   const [loading,   setLoading]   = useState(true);
   const [submitting,setSubmitting]= useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   useEffect(() => { fetchFeedback(); }, []);
 
@@ -23,7 +29,7 @@ export default function FeedbackScreen({ route }) {
       const res = await api.get(`/feedback/course/${courseId}`);
       setFeedbacks(res.data);
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     } finally {
       setLoading(false);
     }
@@ -31,23 +37,23 @@ export default function FeedbackScreen({ route }) {
 
   const handleSubmit = async () => {
     if (content.trim().length < 10) {
-      Alert.alert('Validation', 'Feedback must be at least 10 characters.'); return;
+      showAlert('Validation', 'Feedback must be at least 10 characters.', 'ERROR'); return;
     }
     setSubmitting(true);
     try {
       if (editingId) {
         await api.put(`/feedback/${editingId}`, { content: content.trim(), rating });
-        Alert.alert('Success', 'Feedback updated. Pending approval.');
+        showAlert('Success', 'Feedback updated. Pending approval.', 'SUCCESS');
         setEditingId(null);
       } else {
         await api.post('/feedback', { content: content.trim(), rating, courseId });
-        Alert.alert('Thank you!', 'Feedback submitted. Pending approval.');
+        showAlert('Thank you!', 'Feedback submitted. Pending approval.', 'SUCCESS');
       }
       setContent('');
       setRating(5);
       fetchFeedback();
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.error || err.message);
+      showAlert('Error', err.response?.data?.error || err.message, 'ERROR');
     } finally {
       setSubmitting(false);
     }
@@ -60,22 +66,23 @@ export default function FeedbackScreen({ route }) {
   };
 
   const handleDelete = (id) => {
-    Alert.alert('Confirm Delete', 'Are you sure you want to delete this feedback?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-          try {
-            await api.delete(`/feedback/${id}`);
-            fetchFeedback();
-          } catch (err) { Alert.alert('Error', err.response?.data?.error || err.message); }
-      }}
-    ]);
+    showAlert('Confirm Delete', 'Are you sure you want to delete this feedback?', 'DELETE', async () => {
+      try {
+        await api.delete(`/feedback/${id}`);
+        fetchFeedback();
+      } catch (err) { 
+        showAlert('Error', err.response?.data?.error || err.message, 'ERROR'); 
+      }
+    });
   };
 
   const handleApprove = async (id) => {
     try {
       await api.post(`/feedback/${id}/approve`);
       fetchFeedback();
-    } catch (err) { Alert.alert('Error', err.message); }
+    } catch (err) { 
+      showAlert('Error', err.message, 'ERROR'); 
+    }
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#6C63FF" /></View>;
@@ -149,6 +156,18 @@ export default function FeedbackScreen({ route }) {
       <TouchableOpacity style={styles.btn} onPress={handleSubmit} disabled={submitting}>
         {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Submit Feedback</Text>}
       </TouchableOpacity>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+        onCancel={alertConfig.type === 'DELETE' ? () => setAlertConfig({ ...alertConfig, visible: false }) : null}
+      />
     </ScrollView>
   );
 }

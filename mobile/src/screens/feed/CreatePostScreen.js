@@ -6,6 +6,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import api from '../../api/axiosConfig';
 import { useAuth } from '../../context/AuthContext';
+import CustomAlert from '../../components/common/CustomAlert';
 
 const ACHIEVEMENT_TYPES = ['Course Completion', 'Quiz Score', 'Milestone', 'General'];
 
@@ -18,11 +19,16 @@ export default function CreatePostScreen({ route, navigation }) {
   const [achievementType, setAchievement] = useState(editingPost?.achievementType || 'General');
   const [image, setImage]                 = useState(null);
   const [loading, setLoading]             = useState(false);
+  const [alertConfig, setAlertConfig]     = useState({ visible: false, title: '', message: '', type: 'INFO', onConfirm: null });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Please allow access to your photo library.');
+      showAlert('Permission Required', 'Please allow access to your photo library.', 'ERROR');
       return;
     }
 
@@ -39,7 +45,7 @@ export default function CreatePostScreen({ route, navigation }) {
 
   const handleSubmit = async () => {
     if (content.trim().length < 10) {
-      Alert.alert('Validation', 'Post must be at least 10 characters.'); return;
+      showAlert('Validation', 'Post must be at least 10 characters.', 'ERROR'); return;
     }
     setLoading(true);
     try {
@@ -67,13 +73,14 @@ export default function CreatePostScreen({ route, navigation }) {
         });
       }
 
-      Alert.alert(
+      showAlert(
         isEditing ? 'Updated!' : 'Posted!', 
-        isEditing ? 'Your post has been updated and is pending approval.' : 'Your post has been submitted for approval.'
+        isEditing ? 'Your post has been updated and is pending approval.' : 'Your post has been submitted for approval.',
+        'SUCCESS',
+        () => navigation.navigate('FeedHome')
       );
-      navigation.navigate('FeedHome');
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     } finally {
       setLoading(false);
     }
@@ -131,6 +138,17 @@ export default function CreatePostScreen({ route, navigation }) {
       <TouchableOpacity style={styles.btn} onPress={handleSubmit} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{isEditing ? 'Update Post' : 'Submit Post'}</Text>}
       </TouchableOpacity>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+      />
     </ScrollView>
   );
 }

@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import api from '../../api/axiosConfig';
 import { useAuth } from '../../context/AuthContext';
+import CustomAlert from '../../components/common/CustomAlert';
 
 export default function LessonViewScreen({ route, navigation }) {
   const { lessonId } = route.params;
@@ -14,6 +15,13 @@ export default function LessonViewScreen({ route, navigation }) {
   const [quizSubmitted,setQuizSubmitted]= useState(false);
   const [quizResult,   setQuizResult]   = useState(null);
   const [completing,   setCompleting]   = useState(false);
+  const [alertConfig,  setAlertConfig]  = useState({ 
+    visible: false, title: '', message: '', type: 'INFO', onConfirm: null 
+  });
+
+  const showAlert = (title, message, type = 'INFO', onConfirm = null) => {
+    setAlertConfig({ visible: true, title, message, type, onConfirm });
+  };
 
   useEffect(() => { fetchLesson(); }, []);
 
@@ -23,7 +31,7 @@ export default function LessonViewScreen({ route, navigation }) {
       setData(res.data);
       setQuizSubmitted(res.data.completedQuizLessonIds?.includes(lessonId));
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     } finally {
       setLoading(false);
     }
@@ -33,10 +41,9 @@ export default function LessonViewScreen({ route, navigation }) {
     setCompleting(true);
     try {
       await api.post(`/lessons/${lessonId}/complete`);
-      Alert.alert('✅ Done!', 'Lesson marked as complete.');
-      navigation.goBack();
+      showAlert('✅ Done!', 'Lesson marked as complete.', 'SUCCESS', () => navigation.goBack());
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message, 'ERROR');
     } finally {
       setCompleting(false);
     }
@@ -64,7 +71,9 @@ export default function LessonViewScreen({ route, navigation }) {
         updateUser({ ...user, points: res.data.totalPoints });
       }
     } catch (err) {
-      if (!err.message.includes('already submitted')) Alert.alert('Error', err.message);
+      if (!err.message.includes('already submitted')) {
+        showAlert('Error', err.message, 'ERROR');
+      }
     }
   };
 
@@ -73,207 +82,220 @@ export default function LessonViewScreen({ route, navigation }) {
     const baseUrl = api.defaults.baseURL.replace('/api', '');
     const url = `${baseUrl}${data.lesson.materialUrl}`;
     Linking.openURL(url).catch(err => {
-      Alert.alert('Error', 'Unable to open PDF link. Please try again.');
+      showAlert('Error', 'Unable to open PDF link. Please try again.', 'ERROR');
     });
   };
 
   const handleDeleteLesson = () => {
-    Alert.alert(
+    showAlert(
       'Delete Lesson',
       'Are you sure you want to delete this lesson? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await api.delete(`/lessons/${lessonId}`);
-              Alert.alert('Success', 'Lesson deleted.');
-              navigation.goBack();
-            } catch (err) {
-              setLoading(false);
-              Alert.alert('Error', err.response?.data?.error || err.message);
-            }
-          }
+      'DELETE',
+      async () => {
+        try {
+          setLoading(true);
+          await api.delete(`/lessons/${lessonId}`);
+          showAlert('Success', 'Lesson deleted.', 'SUCCESS', () => navigation.goBack());
+        } catch (err) {
+          setLoading(false);
+          showAlert('Error', err.response?.data?.error || err.message, 'ERROR');
         }
-      ]
+      }
     );
   };
 
-  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#6C63FF" /></View>;
-  if (!data)   return null;
+  if (!data && loading) return <View style={styles.center}><ActivityIndicator size="large" color="#6C63FF" /></View>;
+  if (!data) return null;
 
   const { lesson, isEnrolled, completedLessonIds } = data;
   const isCompleted = completedLessonIds?.includes(lessonId);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* Enhanced Header */}
-      <View style={styles.headerCard}>
-        <Text style={styles.title}>{lesson.title}</Text>
-        <View style={styles.headerDetails}>
-           <Text style={styles.statusBadge}>{isCompleted ? '✅ Completed' : '📖 In Progress'}</Text>
+    <View style={{ flex: 1, backgroundColor: '#0F0F23' }}>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#6C63FF" />
         </View>
-      </View>
-
-      <Text style={styles.sectionHeader}>Lesson Overview</Text>
-      <View style={styles.contentCard}>
-        <Text style={styles.content}>{lesson.content}</Text>
-      </View>
-
-      {/* Admin/Staff Controls */}
-      {user && ['ADMIN', 'STAFF'].includes(user.role) && (
-        <View style={styles.adminControls}>
-          <TouchableOpacity 
-            style={styles.adminEditBtn} 
-            onPress={() => navigation.navigate('CreateLesson', { courseId: lesson.courseId, lessonId: lesson._id, edit: true })}
-          >
-            <Text style={styles.adminBtnText}>✏️ Edit Lesson</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.adminDeleteBtn} 
-            onPress={handleDeleteLesson}
-          >
-            <Text style={styles.adminBtnText}>Delete Lesson</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* PDF Material Section */}
-      {lesson.materialUrl && (
-        <View style={styles.materialCard}>
-          <View style={styles.materialHeader}>
-            <Text style={styles.materialIcon}>📄</Text>
-            <View style={{ flex: 1 }}>
-               <Text style={styles.materialTitle}>Attached Document</Text>
-               <Text style={styles.materialName} numberOfLines={1}>{lesson.materialName || 'Lesson Material.pdf'}</Text>
+      ) : (
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+          {/* Enhanced Header */}
+          <View style={styles.headerCard}>
+            <Text style={styles.title}>{lesson.title}</Text>
+            <View style={styles.headerDetails}>
+               <Text style={styles.statusBadge}>{isCompleted ? '✅ Completed' : '📖 In Progress'}</Text>
             </View>
           </View>
-          <View style={styles.materialActions}>
-             <TouchableOpacity style={[styles.pdfBtn, styles.pdfViewBtn]} onPress={handleOpenPdf}>
-               <Text style={styles.pdfBtnText}>👁️ View PDF</Text>
-             </TouchableOpacity>
-             <TouchableOpacity style={[styles.pdfBtn, styles.pdfDownloadBtn]} onPress={handleOpenPdf}>
-               <Text style={styles.pdfBtnText}>⬇️ Download</Text>
-             </TouchableOpacity>
-          </View>
-        </View>
-      )}
 
-      {/* Enhanced Quiz Section */}
-      {lesson.quiz?.length > 0 && (
-        <View style={styles.quizWrapper}>
-          <View style={styles.quizHeaderRow}>
-             <Text style={styles.quizHeading}>🎯 Knowledge Check</Text>
-             <Text style={styles.quizSubheading}>{lesson.quiz.length} Questions</Text>
+          <Text style={styles.sectionHeader}>Lesson Overview</Text>
+          <View style={styles.contentCard}>
+            <Text style={styles.content}>{lesson.content}</Text>
           </View>
 
-          {quizSubmitted && quizResult && (
-            <View style={styles.resultBox}>
-              <Text style={styles.resultEmoji}>🏆</Text>
-              <Text style={styles.resultText}>
-                You scored {quizResult.correct} out of {quizResult.total}
-              </Text>
-              <Text style={styles.resultPoints}>Earned {quizResult.earned} points!</Text>
-            </View>
-          )}
-          {quizSubmitted && !quizResult && (
-            <View style={styles.alreadyDoneBox}>
-              <Text style={styles.alreadyDone}>✅ You have already completed this quiz.</Text>
-              <TouchableOpacity 
-                style={[styles.submitBtn, { backgroundColor: '#FF6B6B', marginTop: 14, marginBottom: 0 }]} 
-                onPress={() => {
-                  setQuizSubmitted(false);
-                  setQuizResult(null);
-                  setQuizAnswers({});
-                }}
+          {/* Admin/Staff Controls */}
+          {user && ['ADMIN', 'STAFF'].includes(user.role) && (
+            <View style={styles.adminControls}>
+              <TouchableOpacity
+                style={styles.adminEditBtn}
+                onPress={() => navigation.navigate('CreateLesson', { courseId: lesson.courseId, lessonId: lesson._id, edit: true })}
               >
-                <Text style={styles.submitBtnText}>Reattempt Quiz</Text>
+                <Text style={styles.adminBtnText}>✏️ Edit Lesson</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.submitBtn, { backgroundColor: '#4CAF50', marginTop: 12, marginBottom: 0 }]} 
-                onPress={() => navigation.goBack()}
+              <TouchableOpacity
+                style={styles.adminDeleteBtn}
+                onPress={handleDeleteLesson}
               >
-                <Text style={styles.submitBtnText}>Back to Course</Text>
+                <Text style={styles.adminBtnText}>Delete Lesson</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {lesson.quiz.map((q, qIdx) => (
-            <View key={qIdx} style={styles.questionCard}>
-              <View style={styles.questionMetaRow}>
-                <Text style={styles.questionNumberBadge}>Q{qIdx + 1}</Text>
-                <Text style={styles.pointsNote}>{q.points} pts</Text>
+          {/* PDF Material Section */}
+          {lesson.materialUrl && (
+            <View style={styles.materialCard}>
+              <View style={styles.materialHeader}>
+                <Text style={styles.materialIcon}>📄</Text>
+                <View style={{ flex: 1 }}>
+                   <Text style={styles.materialTitle}>Attached Document</Text>
+                   <Text style={styles.materialName} numberOfLines={1}>{lesson.materialName || 'Lesson Material.pdf'}</Text>
+                </View>
               </View>
-              {q.content ? <Text style={styles.questionContent}>{q.content}</Text> : null}
-              <Text style={styles.questionText}>{q.question}</Text>
-              
-              <View style={styles.optionsWrapper}>
-                {q.options.map((opt, oIdx) => {
-                  const isSelected = quizAnswers[qIdx] === oIdx;
-                  const isCorrect  = quizResult?.results[qIdx]?.correctIndex === oIdx;
-                  const isWrong    = quizSubmitted && isSelected && !isCorrect;
-                  return (
-                    <TouchableOpacity
-                      key={oIdx}
-                      style={[
-                        styles.option,
-                        isSelected && styles.optionSelected,
-                        quizSubmitted && isCorrect && styles.optionCorrect,
-                        quizSubmitted && isWrong   && styles.optionWrong,
-                      ]}
-                      onPress={() => !quizSubmitted && setQuizAnswers((p) => ({ ...p, [qIdx]: oIdx }))}
-                      disabled={quizSubmitted}
-                    >
-                      <Text style={[styles.optionText, (isSelected || (quizSubmitted && isCorrect)) && styles.optionTextBold]}>{opt}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+              <View style={styles.materialActions}>
+                 <TouchableOpacity style={[styles.pdfBtn, styles.pdfViewBtn]} onPress={handleOpenPdf}>
+                   <Text style={styles.pdfBtnText}>👁️ View PDF</Text>
+                 </TouchableOpacity>
+                 <TouchableOpacity style={[styles.pdfBtn, styles.pdfDownloadBtn]} onPress={handleOpenPdf}>
+                   <Text style={styles.pdfBtnText}>⬇️ Download</Text>
+                 </TouchableOpacity>
               </View>
             </View>
-          ))}
-
-          {!quizSubmitted && (
-            <TouchableOpacity style={styles.submitBtn} onPress={handleSubmitQuiz}>
-              <Text style={styles.submitBtnText}>Submit Quiz</Text>
-            </TouchableOpacity>
           )}
 
-          {quizSubmitted && (
-            <View style={{ marginTop: 20 }}>
-              {quizResult && quizResult.correct < quizResult.total && (
-                <TouchableOpacity 
-                  style={[styles.submitBtn, { backgroundColor: '#FF6B6B', marginTop: 0, marginBottom: 16 }]} 
-                  onPress={() => {
-                    setQuizSubmitted(false);
-                    setQuizResult(null);
-                    setQuizAnswers({});
-                  }}
-                >
-                  <Text style={styles.submitBtnText}>Retry Quiz</Text>
+          {/* Enhanced Quiz Section */}
+          {lesson.quiz?.length > 0 && (
+            <View style={styles.quizWrapper}>
+              <View style={styles.quizHeaderRow}>
+                 <Text style={styles.quizHeading}>🎯 Knowledge Check</Text>
+                 <Text style={styles.quizSubheading}>{lesson.quiz.length} Questions</Text>
+              </View>
+
+              {quizSubmitted && quizResult && (
+                <View style={styles.resultBox}>
+                  <Text style={styles.resultEmoji}>🏆</Text>
+                  <Text style={styles.resultText}>
+                    You scored {quizResult.correct} out of {quizResult.total}
+                  </Text>
+                  <Text style={styles.resultPoints}>Earned {quizResult.earned} points!</Text>
+                </View>
+              )}
+              {quizSubmitted && !quizResult && (
+                <View style={styles.alreadyDoneBox}>
+                  <Text style={styles.alreadyDone}>✅ You have already completed this quiz.</Text>
+                  <TouchableOpacity
+                    style={[styles.submitBtn, { backgroundColor: '#FF6B6B', marginTop: 14, marginBottom: 0 }]}
+                    onPress={() => {
+                      setQuizSubmitted(false);
+                      setQuizResult(null);
+                      setQuizAnswers({});
+                    }}
+                  >
+                    <Text style={styles.submitBtnText}>Reattempt Quiz</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.submitBtn, { backgroundColor: '#4CAF50', marginTop: 12, marginBottom: 0 }]}
+                    onPress={() => navigation.goBack()}
+                  >
+                    <Text style={styles.submitBtnText}>Back to Course</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {lesson.quiz.map((q, qIdx) => (
+                <View key={qIdx} style={styles.questionCard}>
+                  <View style={styles.questionMetaRow}>
+                    <Text style={styles.questionNumberBadge}>Q{qIdx + 1}</Text>
+                    <Text style={styles.pointsNote}>{q.points} pts</Text>
+                  </View>
+                  {q.content ? <Text style={styles.questionContent}>{q.content}</Text> : null}
+                  <Text style={styles.questionText}>{q.question}</Text>
+
+                  <View style={styles.optionsWrapper}>
+                    {q.options.map((opt, oIdx) => {
+                      const isSelected = quizAnswers[qIdx] === oIdx;
+                      const isCorrect  = quizResult?.results[qIdx]?.correctIndex === oIdx;
+                      const isWrong    = quizSubmitted && isSelected && !isCorrect;
+                      return (
+                        <TouchableOpacity
+                          key={oIdx}
+                          style={[
+                            styles.option,
+                            isSelected && styles.optionSelected,
+                            quizSubmitted && isCorrect && styles.optionCorrect,
+                            quizSubmitted && isWrong   && styles.optionWrong,
+                          ]}
+                          onPress={() => !quizSubmitted && setQuizAnswers((p) => ({ ...p, [qIdx]: oIdx }))}
+                          disabled={quizSubmitted}
+                        >
+                          <Text style={[styles.optionText, (isSelected || (quizSubmitted && isCorrect)) && styles.optionTextBold]}>{opt}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
+
+              {!quizSubmitted && (
+                <TouchableOpacity style={styles.submitBtn} onPress={handleSubmitQuiz}>
+                  <Text style={styles.submitBtnText}>Submit Quiz</Text>
                 </TouchableOpacity>
               )}
-              
-              <TouchableOpacity 
-                style={[styles.submitBtn, { backgroundColor: '#4CAF50', marginTop: 0, marginBottom: 10 }]} 
-                onPress={() => navigation.goBack()}
-              >
-                <Text style={styles.submitBtnText}>Back to Course</Text>
-              </TouchableOpacity>
+
+              {quizSubmitted && (
+                <View style={{ marginTop: 20 }}>
+                  {quizResult && quizResult.correct < quizResult.total && (
+                    <TouchableOpacity
+                      style={[styles.submitBtn, { backgroundColor: '#FF6B6B', marginTop: 0, marginBottom: 16 }]}
+                      onPress={() => {
+                        setQuizSubmitted(false);
+                        setQuizResult(null);
+                        setQuizAnswers({});
+                      }}
+                    >
+                      <Text style={styles.submitBtnText}>Retry Quiz</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.submitBtn, { backgroundColor: '#4CAF50', marginTop: 0, marginBottom: 10 }]}
+                    onPress={() => navigation.goBack()}
+                  >
+                    <Text style={styles.submitBtnText}>Back to Course</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
-        </View>
+
+          {/* Complete Button */}
+          {isEnrolled && !isCompleted && !lesson.quiz?.length && (
+            <TouchableOpacity style={styles.completeBtn} onPress={handleCompleteLesson} disabled={completing}>
+              {completing ? <ActivityIndicator color="#fff" /> : <Text style={styles.completeBtnText}>✅ Mark as Complete</Text>}
+            </TouchableOpacity>
+          )}
+        </ScrollView>
       )}
 
-      {/* Complete Button */}
-      {isEnrolled && !isCompleted && !lesson.quiz?.length && (
-        <TouchableOpacity style={styles.completeBtn} onPress={handleCompleteLesson} disabled={completing}>
-          {completing ? <ActivityIndicator color="#fff" /> : <Text style={styles.completeBtnText}>✅ Mark as Complete</Text>}
-        </TouchableOpacity>
-      )}
-    </ScrollView>
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => {
+          setAlertConfig({ ...alertConfig, visible: false });
+          if (alertConfig.onConfirm) alertConfig.onConfirm();
+        }}
+        onCancel={alertConfig.type === 'DELETE' ? () => setAlertConfig({ ...alertConfig, visible: false }) : null}
+      />
+    </View>
   );
 }
 
