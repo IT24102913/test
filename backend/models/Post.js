@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const postSchema = new mongoose.Schema(
   {
-    content: {
+        content: {
       type: String,
       required: [true, 'Post content is required'],
       minlength: [10, 'Post must be at least 10 characters'],

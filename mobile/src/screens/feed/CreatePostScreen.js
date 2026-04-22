@@ -107,7 +107,7 @@ export default function CreatePostScreen({ route, navigation }) {
       <TextInput
         style={[styles.input, styles.textarea]}
         placeholder="Share your achievement, milestone, or update... (10–3000 chars)"
-        placeholderTextColor="#888"
+        placeholderTextColor="#888888"
         value={content}
         onChangeText={setContent}
         multiline

@@ -29,7 +29,7 @@ export default function PostDetailScreen({ route }) {
     }
   };
 
-  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#6C63FF" /></View>;
+  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#5e56fc" /></View>;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>

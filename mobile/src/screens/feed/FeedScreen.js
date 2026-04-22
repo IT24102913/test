@@ -39,7 +39,7 @@ export default function FeedScreen({ navigation }) {
       setRefreshing(false);
     }
   }, []);
-
+  
   useFocusEffect(
     useCallback(() => {
       fetchPosts();
