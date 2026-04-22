@@ -170,7 +170,7 @@ exports.reactToPost = async (req, res) => {
   }
 };
 
-// ── POST /api/posts/:id/upload-image ─────────────────────────────────────────
+// ── POST /api/posts/:id/upload-image ──
 exports.uploadImage = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
@@ -198,7 +198,7 @@ exports.uploadImage = async (req, res) => {
   }
 };
 
-// ── GET /api/posts/user/:userId ───────────────────────────────────────────────
+// ── GET /api/posts/user/:userId ──
 exports.getPostsByUser = async (req, res) => {
   try {
     const posts = await Post.find({ authorId: req.params.userId }).sort({ createdAt: -1 });
