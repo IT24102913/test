@@ -219,7 +219,7 @@ export default function FeedScreen({ navigation }) {
 const styles = StyleSheet.create({
   container:     { flex: 1, backgroundColor: '#0F0F23', padding: 16 },
   center:        { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0F23' },
-  heading:       { fontSize: 20, fontWeight: '800', color: '#fff' },
+  heading:       { fontSize: 20, fontWeight: '800', color: '#ffffff' },
   headerRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   newBtn:        { backgroundColor: '#6C63FF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
   newBtnText:    { color: '#fff', fontWeight: '700' },

@@ -2,7 +2,7 @@ const Post = require('../models/Post');
 const path = require('path');
 const fs   = require('fs');
 
-// ── GET /api/posts ────────────────────────────────────────────────────────────
+// ── GET /api/posts ──
 exports.getPosts = async (req, res) => {
   try {
     const allPosts = await Post.find().sort({ createdAt: -1 });
@@ -22,7 +22,7 @@ exports.getPosts = async (req, res) => {
   }
 };
 
-// ── POST /api/posts ───────────────────────────────────────────────────────────
+// ── POST /api/posts ───
 exports.createPost = async (req, res) => {
   try {
     const { content, achievementType } = req.body;
@@ -46,7 +46,7 @@ exports.createPost = async (req, res) => {
   }
 };
 
-// ── GET /api/posts/:id ────────────────────────────────────────────────────────
+// ── GET /api/posts/:id ───
 exports.getPostById = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
@@ -57,7 +57,7 @@ exports.getPostById = async (req, res) => {
   }
 };
 
-// ── PUT /api/posts/:id ────────────────────────────────────────────────────────
+// ── PUT /api/posts/:id ────
 exports.updatePost = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
@@ -80,7 +80,7 @@ exports.updatePost = async (req, res) => {
   }
 };
 
-// ── DELETE /api/posts/:id ─────────────────────────────────────────────────────
+// ── DELETE /api/posts/:id ──
 exports.deletePost = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
@@ -104,7 +104,7 @@ exports.deletePost = async (req, res) => {
   }
 };
 
-// ── POST /api/posts/:id/approve ───────────────────────────────────────────────
+// ── POST /api/posts/:id/approve ───
 exports.approvePost = async (req, res) => {
   try {
     const post = await Post.findByIdAndUpdate(
@@ -119,7 +119,7 @@ exports.approvePost = async (req, res) => {
   }
 };
 
-// ── POST /api/posts/:id/decline ───────────────────────────────────────────────
+// ── POST /api/posts/:id/decline ──
 exports.declinePost = async (req, res) => {
   try {
     const post = await Post.findByIdAndUpdate(
@@ -134,7 +134,7 @@ exports.declinePost = async (req, res) => {
   }
 };
 
-// ── POST /api/posts/:id/react ─────────────────────────────────────────────────
+// ── POST /api/posts/:id/react ──
 exports.reactToPost = async (req, res) => {
   try {
     const { type } = req.body;
@@ -170,7 +170,7 @@ exports.reactToPost = async (req, res) => {
   }
 };
 
-// ── POST /api/posts/:id/upload-image ─────────────────────────────────────────
+// ── POST /api/posts/:id/upload-image ──
 exports.uploadImage = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
@@ -198,7 +198,7 @@ exports.uploadImage = async (req, res) => {
   }
 };
 
-// ── GET /api/posts/user/:userId ───────────────────────────────────────────────
+// ── GET /api/posts/user/:userId ──
 exports.getPostsByUser = async (req, res) => {
   try {
     const posts = await Post.find({ authorId: req.params.userId }).sort({ createdAt: -1 });

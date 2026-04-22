@@ -224,7 +224,7 @@ export default function CommentSection({ postId }) {
       <TextInput
         style={[styles.input, styles.textarea]}
         placeholder="Write your comment..."
-        placeholderTextColor="#888"
+        placeholderTextColor="#858585"
         value={newComment}
         onChangeText={setNewComment}
         multiline
@@ -232,7 +232,7 @@ export default function CommentSection({ postId }) {
         maxLength={800}
       />
       <TouchableOpacity style={styles.submitBtn} onPress={() => handleAddComment(false)} disabled={submitting}>
-        {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Post Comment</Text>}
+        {submitting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.submitText}>Post Comment</Text>}
       </TouchableOpacity>
 
       <CustomAlert
